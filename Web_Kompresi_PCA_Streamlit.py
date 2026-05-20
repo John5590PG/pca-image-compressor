@@ -320,9 +320,9 @@ def tampilkan_section_hasil(
     # ── Tiga gambar berdampingan ──────────────────────────────
     c1, c2, c3 = st.columns([1, 1, 1])
     with c1:
-        st.image(arr_asli_visual, caption="Gambar Asli", use_container_width=True)
+        st.image(arr_asli_visual, caption="Gambar Asli", width="stretch")
     with c2:
-        st.image(arr_kompresi, caption=f"Hasil Kompresi (K={k})", use_container_width=True)
+        st.image(arr_kompresi, caption=f"Hasil Kompresi (K={k})", width="stretch")
     with c3:
         fig_err = plot_error_image(arr_asli_visual, arr_kompresi, "|X − X̂| Error Image")
         st.pyplot(fig_err); plt.close(fig_err)
@@ -373,8 +373,24 @@ if uploaded is None:
     st.stop()
 
 # ── Baca gambar ───────────────────────────────────────────────
-img  = Image.open(uploaded).convert("RGB")
-arr  = np.array(img, dtype=np.uint8)
+MAX_DIM = 900   # batas maksimum dimensi terpanjang (px) agar tidak OOM
+
+img = Image.open(uploaded).convert("RGB")
+w_asli, h_asli = img.size
+
+# Auto-resize jika gambar terlalu besar
+if max(w_asli, h_asli) > MAX_DIM:
+    ratio   = MAX_DIM / max(w_asli, h_asli)
+    w_baru  = int(w_asli * ratio)
+    h_baru  = int(h_asli * ratio)
+    img     = img.resize((w_baru, h_baru), Image.LANCZOS)
+    st.warning(
+        f"⚠️ Gambar asli ({w_asli}×{h_asli} px) terlalu besar untuk diproses di server cloud. "
+        f"Gambar otomatis di-resize menjadi **{w_baru}×{h_baru} px** agar tidak kehabisan RAM. "
+        f"Hasil kompresi tetap representatif."
+    )
+
+arr    = np.array(img, dtype=np.uint8)
 h, w, _ = arr.shape
 k_maks   = min(h, w)
 
@@ -401,7 +417,7 @@ st.markdown('<div class="section-header">📊 Tahap 1 — EDA Awal: Sebelum Komp
 col_img, col_stat, col_hist = st.columns([1, 1, 1.5])
 
 with col_img:
-    st.image(arr, caption=f"Gambar Asli — {w}×{h} px", use_container_width=True)
+    st.image(arr, caption=f"Gambar Asli — {w}×{h} px", width="stretch")
     st.metric("Total Piksel", f"{h*w:,}")
     st.metric("K Maksimum", k_maks)
     lum_global = 0.2126*arr[:,:,0] + 0.7152*arr[:,:,1] + 0.0722*arr[:,:,2]
@@ -574,11 +590,11 @@ st.dataframe(pd.DataFrame(comp), use_container_width=True, hide_index=True)
 # Side-by-side gambar akhir
 sc1, sc2, sc3 = st.columns(3)
 with sc1:
-    st.image(arr,      caption="Asli (RGB)",                use_container_width=True)
+    st.image(arr,      caption="Asli (RGB)",                width="stretch")
 with sc2:
-    st.image(arr_c,    caption=f"Warna K={k}",              use_container_width=True)
+    st.image(arr_c,    caption=f"Warna K={k}", width="stretch")
 with sc3:
-    st.image(arr_g,    caption=f"Grayscale K={k}",          use_container_width=True)
+    st.image(arr_g,    caption=f"Grayscale K={k}", width="stretch")
 
 # ── PSNR interpretasi ──────────────────────────────────────────
 def label_psnr(p):
